@@ -1,69 +1,87 @@
 # Kinetix-OS
-Kinetix-OS is a hand-gesture control prototype for browser and media workflows.
-It uses webcam-based hand tracking (MediaPipe) to move the cursor, click, scroll, switch tabs/apps, and trigger quick actions.
+Kinetix-OS is a webcam-based hand gesture control system for desktop/browser interactions.
+It detects hand landmarks in real time, classifies gesture postures, and routes recognized gestures to system actions (cursor movement, click, scroll, tab switching, app switching, and shortcuts).
 
-## What it does
-- Tracks one hand in real time using a local MediaPipe hand landmark model (`backend/hand_landmarker.task`)
-- Supports:
-  - Cursor movement (index-finger navigation posture)
-  - Pinch-to-click
-  - Scroll via two-finger posture
-  - Two-finger swipe for tab switching
-  - Whole-hand swipe for app switching
-  - Finger-combo shortcuts (open YouTube / GitHub by default)
-- Routes detected gestures to configurable actions through `backend/mappings.json`
+## Highlights
+- Real-time one-hand tracking using MediaPipe Tasks
+- Smoothed, bounded cursor control through index-finger navigation posture
+- Gesture-based click, scroll, tab switch, app switch, and shortcut triggers
+- Configurable gesture-to-action mapping by mode (`BROWSER`, `MEDIA`)
+- Cooldown and hold logic to reduce accidental repeated triggers
 
-## Project structure
-- `backend/main.py` — app entrypoint, camera loop, gesture detection + UI overlay
-- `backend/gestures.py` — gesture classification and swipe/scroll logic
-- `backend/cursor.py` — cursor smoothing and movement mapping
-- `backend/workflow_router.py` — cooldowns + action execution layer
-- `backend/config.py` — camera, thresholds, timing, smoothing constants
-- `backend/mappings.json` — gesture-to-action mapping by mode
-- `backend/hand_landmarker.task` — MediaPipe model file (required)
-- `kinetix_mvp_dashboard.html` — dashboard artifact
+## Repository layout
+```text
+Kinetix-OS/
+├── README.md
+├── kinetix_mvp_dashboard.html
+└── backend/
+    ├── main.py
+    ├── config.py
+    ├── cursor.py
+    ├── gestures.py
+    ├── workflow_router.py
+    ├── mappings.json
+    └── hand_landmarker.task
+```
 
-## Prerequisites
-- Python 3.10+ recommended
-- macOS/Windows with webcam access
-- Accessibility/Input permissions granted to Terminal/Python app (required for mouse/keyboard automation)
+## How it works
+1. `backend/main.py` opens webcam input and runs hand landmark detection.
+2. Landmark points are converted to pixel coordinates and rendered in an overlay.
+3. `backend/gestures.py` evaluates posture/gesture state:
+   - navigation posture
+   - scroll posture
+   - pinch detection
+   - two-finger swipe
+   - whole-hand swipe
+   - static finger-combo gestures
+4. `backend/cursor.py` smooths and maps finger movement to screen coordinates.
+5. `backend/workflow_router.py` applies cooldown/hold checks and executes mapped actions from `backend/mappings.json`.
+
+## Requirements
+- Python 3.10+ (recommended)
+- Webcam
+- OS input permissions for Python/Terminal (mouse + keyboard control)
+- `backend/hand_landmarker.task` model file present
 
 ## Installation
-From the project root:
+From project root:
 
-```bash path=null start=null
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install --upgrade pip
 python3 -m pip install opencv-python mediapipe pyautogui numpy keyboard
 ```
 
-## Run
-The app expects to be run from `backend/` so relative files resolve correctly:
+## Running the app
+Run from the `backend/` directory because the code uses local relative paths (`mappings.json`, `hand_landmarker.task`):
 
-```bash path=null start=null
+```bash
 cd backend
 python3 main.py
 ```
 
-Press `Esc` in the camera window to quit.
+Exit with `Esc` in the OpenCV window.
 
-## Gesture mappings
-Current default mappings are in `backend/mappings.json` under the `BROWSER` and `MEDIA` modes.
-Examples:
-- `PINCH_CLICK` → mouse click
-- `SCROLL_UP` / `SCROLL_DOWN` → scroll
-- `SWIPE_LEFT` / `SWIPE_RIGHT` → previous/next tab
-- `WHOLE_HAND_SWIPE_LEFT` / `WHOLE_HAND_SWIPE_RIGHT` → app switching
-- `INDEX_PINKY` / `INDEX_RING` → open YouTube/GitHub
+## Default gestures and behavior
+The system relies on posture gating to avoid conflicts:
+- **Navigation posture** (index up, others down):
+  - Cursor moves with index tip
+  - Pinch (thumb + index close) triggers `PINCH_CLICK`
+- **Scroll posture** (index + middle up, ring + pinky down):
+  - Vertical index movement triggers `SCROLL_UP` / `SCROLL_DOWN`
+- **Open palm + lateral movement**:
+  - Triggers whole-hand app switching (`WHOLE_HAND_SWIPE_LEFT/RIGHT`)
+- **Two-finger swipe posture + lateral movement**:
+  - Triggers `SWIPE_LEFT` / `SWIPE_RIGHT`
+- **Static finger combos**:
+  - `INDEX_PINKY`
+  - `INDEX_RING`
 
-## Configuration
-Tune behavior in `backend/config.py`:
-- Camera resolution (`CAM_WIDTH`, `CAM_HEIGHT`)
-- Gesture thresholds (`CLICK_THRESHOLD`, `SCROLL_THRESHOLD`, `SWIPE_THRESHOLD`)
-- Timing/cooldowns (`SCROLL_HOLD_DURATION`, `PER_GESTURE_COOLDOWN`, etc.)
-- Cursor smoothing and deadzone constants
+## Action routing
+`backend/mappings.json` maps gesture names to action keys per mode.
 
+<<<<<<< Updated upstream
 ## Notes
 - `backend/hand_landmarker.task` must exist before startup.
 - Some key bindings in `workflow_router.py` are OS-sensitive; adjust them if your platform layout differs.
@@ -127,3 +145,70 @@ The system operates on a continuous loop of Perception, Reasoning, and Execution
 ```bash
 git clone [https://github.com/susovanchatterjee/kinetix.git](https://github.com/susovanchatterjee/kinetix.git)
 cd kinetix
+=======
+Key points:
+- `TRAEWorkflowRouter` starts in `BROWSER` mode.
+- Supported action handlers are defined in `ACTION_HANDLERS` inside `backend/workflow_router.py`.
+- Cooldowns are dynamic:
+  - open palm uses longer cooldown
+  - scroll uses short cooldown
+  - swipe/app-swipe have separate cooldowns
+- Some gestures (`INDEX_PINKY`, `INDEX_RING`) require a short hold duration before firing.
+
+## Tuning and customization
+Most tuning happens in `backend/config.py`:
+- Camera: `CAM_WIDTH`, `CAM_HEIGHT`
+- Gesture thresholds:
+  - `CLICK_THRESHOLD`
+  - `SCROLL_THRESHOLD`
+  - `SWIPE_THRESHOLD`
+  - `SWIPE_BUFFER_SIZE`
+- Cursor feel:
+  - `DEADZONE`
+  - `CURSOR_SPEED_DIVISOR`
+  - `CURSOR_MAX_FACTOR`
+- Timing:
+  - `SCROLL_HOLD_DURATION`
+  - `SCROLL_COOLDOWN`
+  - `PER_GESTURE_COOLDOWN`
+  - `OPEN_PALM_COOLDOWN`
+  - `CALIBRATION_DURATION`
+
+## Common issues
+### 1) `hand_landmarker.task` missing
+If startup prints:
+`CRITICAL: 'hand_landmarker.task' missing.`
+Place the file in `backend/` and rerun.
+
+### 2) Gestures detected but no system action happens
+- Verify OS accessibility/input permissions for Python/Terminal.
+- Confirm your gesture exists in `mappings.json` under the active mode.
+- Confirm the mapped action key exists in `ACTION_HANDLERS`.
+
+### 3) Cursor feels jittery or too slow
+- Increase `DEADZONE` to suppress micro-movements.
+- Tune `CURSOR_SPEED_DIVISOR` / `CURSOR_MAX_FACTOR`.
+- Adjust lighting/camera angle for cleaner landmarks.
+
+### 4) Swipe gestures misfire
+- Increase `SWIPE_THRESHOLD`.
+- Increase `SWIPE_BUFFER_SIZE` for stronger smoothing.
+
+## Safety notes
+- This project can control mouse/keyboard globally.
+- Test in a non-critical environment first.
+- Keep one hand ready on physical keyboard/mouse to override behavior quickly.
+
+## Future improvements (suggested)
+- Add CLI flags / config profiles
+- Add explicit mode-switch gestures
+- Add unit tests for gesture math and routing
+- Add packaging (`requirements.txt` / lockfile)
+- Add structured logs instead of print statements
+
+## Contributing
+1. Fork/clone the repo
+2. Create a feature branch
+3. Make and test changes
+4. Open a pull request with clear before/after behavior notes
+>>>>>>> Stashed changes

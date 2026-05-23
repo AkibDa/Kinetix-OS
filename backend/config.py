@@ -11,9 +11,10 @@ pyautogui.FAILSAFE = False
 
 # Gestures & Physics (Strict Thresholds)
 CLICK_THRESHOLD = 35
-SCROLL_THRESHOLD = 20       # Absolute pixel distance needed to trigger a scroll (Symmetrical)
-SWIPE_THRESHOLD = 70        # Requires a deliberate sweep to trigger
-DEADZONE = 10               # Kills micro-tremors completely
+SCROLL_THRESHOLD = 20
+SWIPE_THRESHOLD = 80        # Increased slightly (was 70) for average-based smoothing
+SWIPE_BUFFER_SIZE = 10      # New variable: Expanded buffer for smoother trend analysis
+DEADZONE = 10             # Kills micro-tremors completely
 
 # Timings & Cooldowns
 SCROLL_HOLD_DURATION = 0.05

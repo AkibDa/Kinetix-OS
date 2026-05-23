@@ -1,14 +1,14 @@
 # gestures.py
 import math
 from collections import deque
-from config import CLICK_THRESHOLD, SCROLL_THRESHOLD, SWIPE_THRESHOLD
+from config import CLICK_THRESHOLD, SCROLL_THRESHOLD, SWIPE_THRESHOLD, SWIPE_BUFFER_SIZE
 
 # The new Anchor variable for perfectly symmetrical scrolling
 scroll_anchor_y = None
 
-# Buffers tuned for smooth sweeping rather than jittery snaps
-two_finger_swipe_buffer = deque(maxlen=6)
-whole_hand_swipe_buffer = deque(maxlen=6)
+# Buffers expanded and tuned for mathematical trend analysis
+two_finger_swipe_buffer = deque(maxlen=SWIPE_BUFFER_SIZE)
+whole_hand_swipe_buffer = deque(maxlen=SWIPE_BUFFER_SIZE)
 _palm_open_state = False
 
 
@@ -27,10 +27,16 @@ def get_scroll_direction(index_y):
   # Calculate exact absolute movement from the anchor
   diff = index_y - scroll_anchor_y
 
-  # If we moved enough pixels, trigger scroll and reset anchor
+  # If we moved enough pixels, trigger scroll
   if abs(diff) > SCROLL_THRESHOLD:
-    scroll_anchor_y = index_y
-    return "SCROLL_DOWN" if diff > 0 else "SCROLL_UP"
+    # PRESERVE MOMENTUM: Shift the anchor mathematically by exactly the threshold
+    # rather than snapping it to the finger. This prevents stuttering during fast continuous scrolls.
+    if diff > 0:
+      scroll_anchor_y += SCROLL_THRESHOLD
+      return "SCROLL_DOWN"
+    else:
+      scroll_anchor_y -= SCROLL_THRESHOLD
+      return "SCROLL_UP"
 
   return None
 
@@ -67,8 +73,11 @@ def detect_two_finger_swipe(pixel_landmarks, index_tip):
     two_finger_swipe_buffer.append(index_tip[0])
 
     if len(two_finger_swipe_buffer) == two_finger_swipe_buffer.maxlen:
-      start_x = two_finger_swipe_buffer[0]
-      end_x = two_finger_swipe_buffer[-1]
+      buf_list = list(two_finger_swipe_buffer)
+
+      # SMOOTHING: Average the first 3 and last 3 frames to eliminate single-frame camera jitter
+      start_x = sum(buf_list[:3]) / 3.0
+      end_x = sum(buf_list[-3:]) / 3.0
       movement = end_x - start_x
 
       if movement > SWIPE_THRESHOLD:
@@ -122,8 +131,11 @@ def detect_whole_hand_swipe(pixel_landmarks, palm_center):
     whole_hand_swipe_buffer.append(palm_center[0])
 
     if len(whole_hand_swipe_buffer) == whole_hand_swipe_buffer.maxlen:
-      start_x = whole_hand_swipe_buffer[0]
-      end_x = whole_hand_swipe_buffer[-1]
+      buf_list = list(whole_hand_swipe_buffer)
+
+      # SMOOTHING: Average the first 3 and last 3 frames
+      start_x = sum(buf_list[:3]) / 3.0
+      end_x = sum(buf_list[-3:]) / 3.0
       movement = end_x - start_x
 
       if movement > SWIPE_THRESHOLD:
